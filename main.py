@@ -14,7 +14,10 @@ logger = logging.getLogger(__name__)
 
 def run_health_server():
     try:
+        import os
         from http.server import HTTPServer, BaseHTTPRequestHandler
+
+        port = int(os.environ.get("PORT", "8000"))
 
         class HealthHandler(BaseHTTPRequestHandler):
             def do_GET(self):
@@ -25,7 +28,7 @@ def run_health_server():
             def log_message(self, *a):
                 pass
 
-        server = HTTPServer(("0.0.0.0", 8000), HealthHandler)
+        server = HTTPServer(("0.0.0.0", port), HealthHandler)
         server.serve_forever()
     except Exception:
         pass
