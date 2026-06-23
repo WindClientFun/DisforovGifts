@@ -8,7 +8,7 @@ from config import OWNER_USERNAME, ACTIVITY_CHAT_INVITE, ACTIVITY_CHAT_ID, ADMIN
 from database import (
     track_message, get_top_users, get_total_messages,
     get_random_gift, log_giveaway, is_giveaway_done, set_giveaway_done,
-    get_or_create_user,
+    get_or_create_user, set_x2, get_x2,
 )
 
 GIFT_CAPTIONS = {
@@ -90,6 +90,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(text, disable_web_page_preview=True)
 
 
+async def x2_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    if user.id not in ADMIN_IDS:
+        return
+    current = get_x2(ACTIVITY_CHAT_ID)
+    set_x2(ACTIVITY_CHAT_ID, not current)
+    status = "🔥 ВКЛЮЧЕН" if not current else "❌ ВЫКЛЮЧЕН"
+    await update.message.reply_text(f"Х2 ивент {status} на сегодня!")
+
+
 async def track_chat_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.id != ACTIVITY_CHAT_ID:
         return
@@ -124,7 +134,8 @@ async def daily_giveaway(context: ContextTypes.DEFAULT_TYPE):
     if len(top) < 1:
         return
 
-    is_x2 = random.random() < X2_EVENT_CHANCE
+    manual_x2 = get_x2(chat_id)
+    is_x2 = manual_x2 or (not manual_x2 and random.random() < X2_EVENT_CHANCE)
     if is_x2:
         x2_text = "🔥 Х2 ИВЕНТ! 🔥\nСегодня дарим в 2 раза больше подарков!\n"
         await context.bot.send_message(chat_id=chat_id, text=x2_text)
@@ -194,6 +205,7 @@ async def daily_giveaway(context: ContextTypes.DEFAULT_TYPE):
 def get_handlers():
     return [
         CommandHandler("start", start),
+        CommandHandler("x2", x2_command),
         MessageHandler(filters.TEXT & ~filters.COMMAND, track_chat_messages),
     ]
 

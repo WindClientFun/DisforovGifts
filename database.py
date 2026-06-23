@@ -51,11 +51,18 @@ def init_db():
             chat_id INTEGER NOT NULL,
             date TEXT NOT NULL,
             total_messages INTEGER DEFAULT 0,
-            giveaway_done INTEGER DEFAULT 0
+            giveaway_done INTEGER DEFAULT 0,
+            x2_active INTEGER DEFAULT 0
         );
     """)
     conn.commit()
     _seed_gifts(conn)
+
+    try:
+        conn.execute("ALTER TABLE daily_stats ADD COLUMN x2_active INTEGER DEFAULT 0")
+        conn.commit()
+    except Exception:
+        pass
 
 
 def _seed_gifts(conn):
@@ -166,6 +173,27 @@ def get_random_gift_by_name(name: str):
     conn = get_conn()
     rows = conn.execute("SELECT * FROM gifts WHERE name = ? ORDER BY RANDOM() LIMIT 1", (name,)).fetchall()
     return dict(rows[0]) if rows else None
+
+
+def set_x2(chat_id: int, active: bool):
+    conn = get_conn()
+    today = date.today().isoformat()
+    conn.execute("""
+        INSERT INTO daily_stats (chat_id, date, x2_active)
+        VALUES (?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET x2_active = ?
+    """, (chat_id, today, int(active), int(active)))
+    conn.commit()
+
+
+def get_x2(chat_id: int) -> bool:
+    conn = get_conn()
+    today = date.today().isoformat()
+    row = conn.execute(
+        "SELECT x2_active FROM daily_stats WHERE chat_id = ? AND date = ?",
+        (chat_id, today),
+    ).fetchone()
+    return row[0] == 1 if row else False
 
 
 def log_giveaway(user_id: int, gift_id: int, chat_id: int):
